@@ -1,0 +1,164 @@
+<div class="checkout-container">
+  <div class="checkout-header">
+    <h1>Ödeme Yöntemi</h1>
+    <div class="checkout-steps">
+      <div class="step completed">1. Adres</div>
+      <div class="step active">2. Ödeme</div>
+      <div class="step">3. Onay</div>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    <p>{{ error }}</p>
+  </div>
+
+  <div class="checkout-content">
+    <div class="payment-section">
+      <div class="section-header">
+        <h2>Ödeme Yöntemi Seçin</h2>
+      </div>
+
+      <div class="payment-methods">
+        <div
+          *ngFor="let method of paymentMethods"
+          class="payment-method-card"
+          [class.selected]="selectedPaymentMethod === method"
+          (click)="selectPaymentMethod(method)"
+        >
+          <div class="payment-method-icon">
+            <i class="fas" [ngClass]="getPaymentMethodIcon(method)"></i>
+          </div>
+          <div class="payment-method-label">
+            {{ getPaymentMethodLabel(method) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Kredi Kartı Form -->
+      <div class="card-form-container" *ngIf="selectedPaymentMethod === 'CREDIT_CARD'">
+        <h3>Kart Bilgileri</h3>
+        <form [formGroup]="cardForm">
+          <div class="form-group">
+            <label for="cardNumber">Kart Numarası</label>
+            <input
+              type="text"
+              id="cardNumber"
+              formControlName="cardNumber"
+              placeholder="1234 5678 9012 3456"
+              [ngClass]="{'invalid': cardForm.get('cardNumber')?.invalid && cardForm.get('cardNumber')?.touched}"
+              maxlength="16"
+            >
+            <div class="error-hint" *ngIf="cardForm.get('cardNumber')?.invalid && cardForm.get('cardNumber')?.touched">
+              {{ getCardErrorMessage('cardNumber') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="cardHolderName">Kart Üzerindeki İsim</label>
+            <input
+              type="text"
+              id="cardHolderName"
+              formControlName="cardHolderName"
+              placeholder="AD SOYAD"
+              [ngClass]="{'invalid': cardForm.get('cardHolderName')?.invalid && cardForm.get('cardHolderName')?.touched}"
+            >
+            <div class="error-hint" *ngIf="cardForm.get('cardHolderName')?.invalid && cardForm.get('cardHolderName')?.touched">
+              {{ getCardErrorMessage('cardHolderName') }}
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="expiryMonth">Son Kullanma Ay</label>
+              <input
+                type="number"
+                id="expiryMonth"
+                formControlName="expiryMonth"
+                placeholder="MM"
+                min="1"
+                max="12"
+                [ngClass]="{'invalid': cardForm.get('expiryMonth')?.invalid && cardForm.get('expiryMonth')?.touched}"
+              >
+              <div class="error-hint" *ngIf="cardForm.get('expiryMonth')?.invalid && cardForm.get('expiryMonth')?.touched">
+                {{ getCardErrorMessage('expiryMonth') }}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="expiryYear">Son Kullanma Yıl</label>
+              <input
+                type="number"
+                id="expiryYear"
+                formControlName="expiryYear"
+                placeholder="YYYY"
+                [ngClass]="{'invalid': cardForm.get('expiryYear')?.invalid && cardForm.get('expiryYear')?.touched}"
+              >
+              <div class="error-hint" *ngIf="cardForm.get('expiryYear')?.invalid && cardForm.get('expiryYear')?.touched">
+                {{ getCardErrorMessage('expiryYear') }}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="cvc">CVC</label>
+              <input
+                type="text"
+                id="cvc"
+                formControlName="cvc"
+                placeholder="123"
+                maxlength="4"
+                [ngClass]="{'invalid': cardForm.get('cvc')?.invalid && cardForm.get('cvc')?.touched}"
+              >
+              <div class="error-hint" *ngIf="cardForm.get('cvc')?.invalid && cardForm.get('cvc')?.touched">
+                {{ getCardErrorMessage('cvc') }}
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Kapıda Ödeme Açıklaması -->
+      <div class="payment-info" *ngIf="selectedPaymentMethod === 'CASH_ON_DELIVERY'">
+        <p>
+          <i class="fas fa-info-circle"></i>
+          Siparişinizi teslim aldığınızda, teslimatı yapan kuryeye ödeme yapabilirsiniz.
+          Nakit ve kredi kartı ile ödeme kabul edilmektedir.
+        </p>
+        <p class="fee-info">
+          <strong>Not:</strong> Kapıda ödeme seçeneği için 5₺ hizmet bedeli eklenecektir.
+        </p>
+      </div>
+
+      <!-- Banka Transferi Açıklaması -->
+      <div class="payment-info" *ngIf="selectedPaymentMethod === 'BANK_TRANSFER'">
+        <p>
+          <i class="fas fa-info-circle"></i>
+          Siparişinizi verdikten sonra, aşağıdaki banka hesaplarına EFT/Havale yapabilirsiniz.
+          Ödemeniz onaylandıktan sonra siparişiniz hazırlanacaktır.
+        </p>
+        <div class="bank-accounts">
+          <div class="bank-account">
+            <div class="bank-name">Ziraat Bankası</div>
+            <div class="account-info">
+              <div>Hesap Sahibi: E-Ticaret A.Ş.</div>
+              <div>IBAN: TR12 0001 0012 3456 7890 1234 56</div>
+            </div>
+          </div>
+          <div class="bank-account">
+            <div class="bank-name">Garanti Bankası</div>
+            <div class="account-info">
+              <div>Hesap Sahibi: E-Ticaret A.Ş.</div>
+              <div>IBAN: TR98 0006 2000 1234 5678 9012 34</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="checkout-actions">
+    <button class="btn-back" routerLink="/checkout/address">Adres Seçimine Dön</button>
+    <button class="btn-continue" (click)="proceedToConfirmation()">
+      Siparişi Onayla
+    </button>
+  </div>
+</div>

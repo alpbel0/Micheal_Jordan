@@ -1,0 +1,207 @@
+<div class="profile-container">
+  <h2>Hesabım</h2>
+
+  <!-- Yükleniyor göstergesi -->
+  <div class="loading-indicator" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Yükleniyor...</p>
+  </div>
+
+  <div class="account-content" *ngIf="currentUser && !loading">
+    <!-- Hesap navigasyonu -->
+    <div class="account-navigation">
+      <div class="nav-item" [class.active]="activeSection === 'profile'" (click)="setActiveSection('profile')">
+        <i class="fas fa-user"></i> Profil Bilgileri
+      </div>
+      <div class="nav-item" [class.active]="activeSection === 'orders'" (click)="setActiveSection('orders')">
+        <i class="fas fa-shopping-bag"></i> Siparişlerim
+      </div>
+      <div class="nav-item" [class.active]="activeSection === 'addresses'" (click)="setActiveSection('addresses')">
+        <i class="fas fa-map-marker-alt"></i> Adreslerim
+      </div>
+      <div class="nav-item" [class.active]="activeSection === 'payments'" (click)="setActiveSection('payments')">
+        <i class="fas fa-credit-card"></i> Ödeme Yöntemlerim
+      </div>
+      <div class="nav-item" [class.active]="activeSection === 'settings'" (click)="setActiveSection('settings')">
+        <i class="fas fa-cog"></i> Hesap Ayarları
+      </div>
+    </div>
+
+    <!-- İçerik bölümü -->
+    <div class="account-section">
+      <!-- Profil bölümü -->
+      <div *ngIf="activeSection === 'profile'">
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <span>{{ currentUser.firstName?.charAt(0) || currentUser.username.charAt(0) }}</span>
+            </div>
+            <div class="profile-title">
+              <h3>{{ currentUser.firstName || '' }} {{ currentUser.lastName || '' }}</h3>
+              <p>{{ currentUser.email }}</p>
+              <p class="user-role">{{ currentUser.role }}</p>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <button (click)="toggleEditMode()" class="btn">
+              {{ editMode ? 'İptal' : 'Profili Düzenle' }}
+            </button>
+            <button (click)="togglePasswordForm()" class="btn">
+              {{ showPasswordForm ? 'İptal' : 'Şifre Değiştir' }}
+            </button>
+          </div>
+
+          <!-- Profil Düzenleme Formu -->
+          <div class="profile-edit-form" *ngIf="editMode">
+            <h3>Profil Bilgilerini Düzenle</h3>
+            <div class="form-group">
+              <label for="username">Kullanıcı Adı</label>
+              <input type="text" id="username" [(ngModel)]="updatedUser.username">
+            </div>
+            <div class="form-group">
+              <label for="email">E-posta</label>
+              <input type="email" id="email" [(ngModel)]="updatedUser.email">
+            </div>
+            <div class="form-group">
+              <label for="firstName">Ad</label>
+              <input type="text" id="firstName" [(ngModel)]="updatedUser.firstName">
+            </div>
+            <div class="form-group">
+              <label for="lastName">Soyad</label>
+              <input type="text" id="lastName" [(ngModel)]="updatedUser.lastName">
+            </div>
+            <button (click)="saveProfile()" class="btn btn-primary" [disabled]="loading">
+              {{ loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet' }}
+            </button>
+          </div>
+
+          <!-- Şifre Değiştirme Formu -->
+          <div class="password-change-form" *ngIf="showPasswordForm">
+            <h3>Şifre Değiştir</h3>
+            <div class="form-group">
+              <label for="currentPassword">Mevcut Şifre</label>
+              <input type="password" id="currentPassword" [(ngModel)]="passwordChange.currentPassword">
+            </div>
+            <div class="form-group">
+              <label for="newPassword">Yeni Şifre</label>
+              <input type="password" id="newPassword" [(ngModel)]="passwordChange.newPassword">
+              <small class="form-hint">En az 6 karakter olmalıdır</small>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Yeni Şifre (Tekrar)</label>
+              <input type="password" id="confirmPassword" [(ngModel)]="passwordChange.confirmPassword">
+            </div>
+            <button (click)="changePassword()" class="btn btn-primary" [disabled]="loading">
+              {{ loading ? 'İşleniyor...' : 'Şifreyi Değiştir' }}
+            </button>
+          </div>
+
+          <!-- Kullanıcı Detayları -->
+          <div class="profile-details" *ngIf="!editMode && !showPasswordForm">
+            <h3>Hesap Bilgileri</h3>
+            <div class="detail-item">
+              <span class="detail-label">Kullanıcı Adı:</span>
+              <span class="detail-value">{{ currentUser.username }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">E-posta:</span>
+              <span class="detail-value">{{ currentUser.email }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Ad:</span>
+              <span class="detail-value">{{ currentUser.firstName || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Soyad:</span>
+              <span class="detail-value">{{ currentUser.lastName || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Rol:</span>
+              <span class="detail-value">{{ currentUser.role }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Siparişler bölümü -->
+      <div *ngIf="activeSection === 'orders'">
+        <h3>Siparişlerim</h3>
+        <div class="orders-section">
+          <p>Siparişleriniz burada görüntülenecektir. Şu anda siparişleriniz yükleniyor veya hiç sipariş yok.</p>
+          <div class="no-orders-message">
+            <i class="fas fa-shopping-bag"></i>
+            <p>Henüz siparişiniz bulunmuyor</p>
+            <a routerLink="/products" class="btn btn-primary">Alışverişe Başla</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adresler bölümü -->
+      <div *ngIf="activeSection === 'addresses'">
+        <h3>Adreslerim</h3>
+        <div class="addresses-section">
+          <p>Kayıtlı adresleriniz burada görüntülenecektir.</p>
+          <div class="no-addresses-message">
+            <i class="fas fa-map-marker-alt"></i>
+            <p>Henüz adres eklememiş görünüyorsunuz</p>
+            <button class="btn btn-primary">Yeni Adres Ekle</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ödeme yöntemleri bölümü -->
+      <div *ngIf="activeSection === 'payments'">
+        <h3>Ödeme Yöntemlerim</h3>
+        <div class="payments-section">
+          <p>Kayıtlı ödeme yöntemleriniz burada görüntülenecektir.</p>
+          <div class="no-payments-message">
+            <i class="fas fa-credit-card"></i>
+            <p>Henüz ödeme yöntemi eklenmemiş</p>
+            <button class="btn btn-primary">Yeni Ödeme Yöntemi Ekle</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ayarlar bölümü -->
+      <div *ngIf="activeSection === 'settings'">
+        <h3>Hesap Ayarları</h3>
+        <div class="settings-section">
+          <div class="setting-item">
+            <div class="setting-label">
+              <h4>Bildirimler</h4>
+              <p>E-posta bildirimleri ve anlık bildirimler için tercihleri yönetin</p>
+            </div>
+            <div class="setting-action">
+              <button class="btn">Düzenle</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">
+              <h4>Gizlilik</h4>
+              <p>Hesap gizlilik ayarlarını düzenleyin</p>
+            </div>
+            <div class="setting-action">
+              <button class="btn">Düzenle</button>
+            </div>
+          </div>
+          <div class="setting-item danger-zone">
+            <div class="setting-label">
+              <h4>Hesabı Sil</h4>
+              <p>Tüm hesap verilerinizi kalıcı olarak siler</p>
+            </div>
+            <div class="setting-action">
+              <button class="btn btn-danger">Hesabı Sil</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kullanıcı oturum açmamışsa -->
+  <div class="not-logged-in" *ngIf="!currentUser && !loading">
+    <p>Bu sayfayı görüntülemek için giriş yapmalısınız.</p>
+    <a [routerLink]="['/login']" class="btn">Giriş Yap</a>
+  </div>
+</div>
