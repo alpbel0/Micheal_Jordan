@@ -19,7 +19,6 @@ public class RegisterDto {
     @Email(message = "Geçerli bir email adresi giriniz")
     private String email;
     
-    @NotBlank(message = "Şifre boş olamaz")
     @Size(min = 6, max = 40, message = "Şifre 6-40 karakter arasında olmalıdır")
     private String password;
     
@@ -27,4 +26,5 @@ public class RegisterDto {
     
     private String lastName;
     private String role;
+    private Boolean banned;
 }

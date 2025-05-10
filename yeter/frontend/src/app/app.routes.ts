@@ -6,6 +6,7 @@ import { CheckoutConfirmationComponent } from './features/cart/checkout-confirma
 import { CheckoutSuccessComponent } from './features/cart/checkout-success/checkout-success.component';
 import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
+import { ProfileComponent } from './components/profile/profile.component';
 
 export const routes: Routes = [
   {
@@ -41,7 +42,17 @@ export const routes: Routes = [
   },
   {
     path: 'account',
-    loadChildren: () => import('./features/account/account.module').then(m => m.AccountModule),
+    canActivate: [AuthGuard],
+    children: [
+      { path: '', component: ProfileComponent },
+      { path: 'profile', component: ProfileComponent },
+      { path: 'orders', component: ProfileComponent, data: { section: 'orders' } },
+      { path: 'addresses', component: ProfileComponent, data: { section: 'addresses' } }
+    ]
+  },
+  {
+    path: 'profile',
+    component: ProfileComponent,
     canActivate: [AuthGuard]
   },
   {

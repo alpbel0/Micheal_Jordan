@@ -172,10 +172,71 @@ export class AuthService {
     );
   }
 
-  updateUser(id: number, user: User): Observable<User> {
-    return this.http.put<User>(`${this.apiUrl}/${id}`, user).pipe(
-      catchError(this.handleError)
-    );
+  updateUser(userId: number, userData: any): Observable<User> {
+    // Sadece DTO'da olan alanları seçerek gönder
+    const updateData = {
+      username: userData.username,
+      email: userData.email,
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      role: userData.role,
+      password: userData.password || '',
+      banned: userData.banned
+    };
+
+    // Detaylı loglama ekle
+    console.log('Güncellenen kullanıcı ID:', userId);
+    console.log('Güncellenen kullanıcı verisi:', JSON.stringify(updateData, null, 2));
+    console.log('API URL:', `${this.apiUrl}/${userId}`);
+
+    // Admin kullanıcısı veya yeni oluşturulan hesaplar için XHR kullan
+    const isCurrentAdmin = this.isAdmin();
+    const currentUserId = this.getCurrentUserId();
+
+    // Eğer giriş yapmış admin kullanıcısı başka bir kullanıcıyı düzenliyorsa
+    if (isCurrentAdmin && currentUserId !== userId) {
+      return new Observable<User>(observer => {
+        // Backend HTTP isteği
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', `${this.apiUrl}/${userId}`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        // Admin token'ını gönder
+        const token = this.getAuthToken();
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const response = JSON.parse(xhr.responseText);
+            console.log('Kullanıcı güncelleme başarılı:', response);
+            observer.next(response);
+            observer.complete();
+          } else {
+            console.error('Kullanıcı güncelleme hatası:', xhr.statusText);
+            observer.error({ message: 'Kullanıcı güncellenemedi: ' + xhr.statusText });
+          }
+        };
+
+        xhr.onerror = () => {
+          console.error('Ağ hatası');
+          observer.error({ message: 'Ağ hatası oluştu' });
+        };
+
+        xhr.send(JSON.stringify(updateData));
+      });
+    }
+
+    // Normal yol - HttpClient ile istek
+    return this.http.put<User>(`${this.apiUrl}/${userId}`, updateData)
+      .pipe(
+        tap(response => console.log('Başarılı yanıt:', response)),
+        catchError(error => {
+          console.error('Kullanıcı güncelleme hatası detayları:', JSON.stringify(error, null, 2));
+          return this.handleError(error);
+        })
+      );
   }
 
   deleteUser(id: number): Observable<void> {

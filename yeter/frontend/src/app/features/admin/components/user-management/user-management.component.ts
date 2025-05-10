@@ -26,6 +26,26 @@ import { AuthService } from '../../../../services/auth.service';
             <form [formGroup]="userForm" (ngSubmit)="saveUser()">
               <div class="form-grid">
                 <div class="form-group">
+                  <label for="firstName">Ad</label>
+                  <input type="text" id="firstName" formControlName="firstName" class="form-control"
+                         [class.is-invalid]="userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched">
+                  <div class="validation-error" *ngIf="userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched">
+                    Ad alanı gereklidir
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="lastName">Soyad</label>
+                  <input type="text" id="lastName" formControlName="lastName" class="form-control"
+                         [class.is-invalid]="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched">
+                  <div class="validation-error" *ngIf="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched">
+                    Soyad alanı gereklidir
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
                   <label for="username">Kullanıcı Adı</label>
                   <input type="text" id="username" formControlName="username" class="form-control"
                          [class.is-invalid]="userForm.get('username')?.invalid && userForm.get('username')?.touched">
@@ -44,13 +64,24 @@ import { AuthService } from '../../../../services/auth.service';
                 </div>
               </div>
 
-              <div class="form-group">
+              <!-- Şifre değiştirme seçeneği -->
+              <div class="form-group" *ngIf="editingUser.id">
+                <div class="checkbox-container">
+                  <input type="checkbox" id="changePassword" [(ngModel)]="showPasswordField"
+                         [ngModelOptions]="{standalone: true}"
+                         (change)="onChangePasswordOptionChange()">
+                  <label for="changePassword">Şifre Değiştir</label>
+                </div>
+              </div>
+
+              <!-- Şifre alanı - Sadece yeni kullanıcıda veya şifre değiştirme seçildiğinde göster -->
+              <div class="form-group" *ngIf="!editingUser.id || showPasswordField">
                 <label for="password">Şifre</label>
                 <div class="password-input">
                   <input type="password" id="password" formControlName="password" class="form-control"
-                        placeholder="{{ editingUser.id ? '(Boş bırakırsanız mevcut şifre korunur)' : 'Şifre girin' }}">
+                        placeholder="{{ editingUser.id ? 'Yeni şifre girin' : 'Şifre girin' }}">
                 </div>
-                <div class="validation-error" *ngIf="!editingUser.id && userForm.get('password')?.invalid && userForm.get('password')?.touched">
+                <div class="validation-error" *ngIf="(!editingUser.id || showPasswordField) && userForm.get('password')?.invalid && userForm.get('password')?.touched">
                   Şifre en az 6 karakter olmalıdır
                 </div>
               </div>
@@ -93,6 +124,8 @@ import { AuthService } from '../../../../services/auth.service';
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Ad</th>
+                  <th>Soyad</th>
                   <th>Kullanıcı Adı</th>
                   <th>E-posta</th>
                   <th>Rol</th>
@@ -103,6 +136,8 @@ import { AuthService } from '../../../../services/auth.service';
               <tbody>
                 <tr *ngFor="let user of users" [class.banned-user]="user.banned">
                   <td>{{user.id || '-'}}</td>
+                  <td>{{user.firstName}}</td>
+                  <td>{{user.lastName}}</td>
                   <td>{{user.username}}</td>
                   <td>{{user.email}}</td>
                   <td>
@@ -519,6 +554,7 @@ export class UserManagementComponent implements OnInit {
   userForm: FormGroup;
   isSaving = false;
   UserRole = UserRole;
+  showPasswordField = false; // Şifre değiştirme alanını gösterme durumu
 
   constructor(
     private authService: AuthService,
@@ -538,16 +574,37 @@ export class UserManagementComponent implements OnInit {
   }
 
   private createUserForm(user?: User): FormGroup {
+    // Şifre validasyonu için temel kurallar
+    const passwordValidators = user?.id ? [] : [Validators.required, Validators.minLength(6)];
+
     return this.fb.group({
+      firstName: [user?.firstName || '', [Validators.required]],
+      lastName: [user?.lastName || '', [Validators.required]],
       username: [user?.username || '', [Validators.required]],
       email: [user?.email || '', [Validators.required, Validators.email]],
-      password: ['', user?.id ? [] : [Validators.required, Validators.minLength(6)]],
+      password: ['', passwordValidators], // Yeni kullanıcıda zorunlu, mevcut kullanıcıda opsiyonel
       role: [user?.role || UserRole.USER],
-      banned: [user?.banned || false]
+      banned: [user?.banned === true]  // Boole değerine dönüştür
     });
   }
 
-  private direktKayit(userData: any): Promise<any> {
+  // Şifre değiştirme seçeneği değiştiğinde validasyonu güncelle
+  onChangePasswordOptionChange(): void {
+    const passwordControl = this.userForm.get('password');
+
+    if (this.showPasswordField) {
+      // Şifre değiştirme seçildi, validasyonu aktif et
+      passwordControl?.setValidators([Validators.required, Validators.minLength(6)]);
+    } else {
+      // Şifre değiştirme seçilmedi, validasyonu kaldır
+      passwordControl?.clearValidators();
+    }
+
+    // Validasyon durumunu güncelle
+    passwordControl?.updateValueAndValidity();
+  }
+
+  private direktKayit(userData: User): Promise<User> {
     this.isSaving = true;
 
     const apiUrl = 'http://localhost:8080/api/users/register';
@@ -564,7 +621,20 @@ export class UserManagementComponent implements OnInit {
     })
     .then(response => {
       if (!response.ok) {
-        throw new Error('Kullanıcı kaydı başarısız: ' + response.statusText);
+        // Daha detaylı hata bilgisi almak için JSON'a dönüştür
+        return response.json().then(err => {
+          console.error('Sunucu hatası:', err);
+
+          // 409 Conflict - Kullanıcı adı veya email zaten var
+          if (response.status === 409) {
+            throw new Error('Bu kullanıcı adı veya e-posta adresi zaten kullanımda');
+          }
+
+          throw new Error(err.message || 'Kullanıcı kaydı başarısız: ' + response.statusText);
+        }).catch(jsonError => {
+          // JSON parse hatası varsa orijinal metni kullan
+          throw new Error('Kullanıcı kaydı başarısız: ' + response.statusText);
+        });
       }
       return response.json();
     })
@@ -581,7 +651,12 @@ export class UserManagementComponent implements OnInit {
           console.error('Oturum koruma hatası:', e);
         }
       }
-      return data;
+      return data as User;
+    })
+    .catch(error => {
+      console.error('Kullanıcı oluşturma hatası:', error.message);
+      this.isSaving = false;
+      throw error;
     })
     .finally(() => {
       this.isSaving = false;
@@ -592,8 +667,11 @@ export class UserManagementComponent implements OnInit {
     this.editingUser = {
       username: '',
       email: '',
+      firstName: '',
+      lastName: '',
       role: UserRole.USER,
-      banned: false
+      banned: false,
+      password: ''
     };
     this.userForm = this.createUserForm();
   }
@@ -601,15 +679,34 @@ export class UserManagementComponent implements OnInit {
   editUser(user: User) {
     this.editingUser = { ...user };
     this.userForm = this.createUserForm(user);
+    this.showPasswordField = false; // Şifre değiştirme alanını gizle
   }
 
   toggleBan(user: User) {
     if (!user.id) return;
 
-    const updatedUser = { ...user, banned: !user.banned };
-    this.authService.updateUser(user.id, updatedUser).subscribe({
-      next: () => {
-        this.loadUsers();
+    const updatedUserData: User = {
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: user.role,
+      banned: !user.banned,
+      password: ''  // Boş gönderiyoruz, şifre değişmeyecek
+    };
+
+    this.authService.updateUser(user.id, updatedUserData).subscribe({
+      next: (response) => {
+        // Başarılı cevap geldiğinde liste elemanını güncelle
+        const index = this.users.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+          this.users[index].banned = !user.banned;
+        }
+        console.log('Kullanıcı ban durumu güncellendi:', response);
+      },
+      error: (err) => {
+        console.error('Ban durumu güncellenirken hata oluştu:', err);
+        alert('Ban durumu güncellenirken hata oluştu!');
       }
     });
   }
@@ -618,11 +715,28 @@ export class UserManagementComponent implements OnInit {
     if (!user.id) return;
 
     const newRole = user.role === UserRole.ADMIN ? UserRole.USER : UserRole.ADMIN;
-    const updatedUser = { ...user, role: newRole };
+    const updatedUserData: User = {
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: newRole,
+      banned: user.banned,
+      password: ''  // Boş gönderiyoruz, şifre değişmeyecek
+    };
 
-    this.authService.updateUser(user.id, updatedUser).subscribe({
-      next: () => {
-        this.loadUsers();
+    this.authService.updateUser(user.id, updatedUserData).subscribe({
+      next: (response) => {
+        // Başarılı cevap geldiğinde liste elemanını güncelle
+        const index = this.users.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+          this.users[index].role = newRole;
+        }
+        console.log('Kullanıcı rolü güncellendi:', response);
+      },
+      error: (err) => {
+        console.error('Rol güncellenirken hata oluştu:', err);
+        alert('Rol güncellenirken hata oluştu!');
       }
     });
   }
@@ -631,42 +745,97 @@ export class UserManagementComponent implements OnInit {
     this.editingUser = null;
   }
 
+  // Email ve kullanıcı adının sistemde olup olmadığını kontrol eden yeni metod
+  private checkUserExists(username: string, email: string): Promise<boolean> {
+    // Basit bir kontrol - eğer mevcut kullanıcılar arasında aynı kullanıcı adı veya email varsa
+    const userExists = this.users.some(user =>
+      user.username === username || user.email === email
+    );
+
+    if (userExists) {
+      return Promise.resolve(true); // Kullanıcı zaten var
+    }
+
+    // Eğer yerel listede yoksa, backend'e sorabilirsiniz (opsiyonel)
+    return Promise.resolve(false); // Kullanıcı yok
+  }
+
   saveUser() {
-    if (this.userForm.invalid || !this.editingUser) return;
+    if (this.userForm.invalid) {
+      return;
+    }
 
     this.isSaving = true;
-    const userData = {
-      ...this.editingUser,
-      ...this.userForm.value
+
+    // Formdan değerleri al
+    const values = this.userForm.value;
+
+    // Sadece DTO'da olan alanları içeren veri objesi oluştur
+    const userData: User = {
+      username: values.username,
+      email: values.email,
+      firstName: values.firstName || '',
+      lastName: values.lastName || '',
+      role: values.role,
+      banned: !!values.banned,
+      password: '' // Varsayılan değer
     };
 
-    // Eğer kullanıcı güncelleniyorsa updateUser metodunu kullan
-    if (this.editingUser.id) {
-      this.authService.updateUser(this.editingUser.id, userData).subscribe({
-        next: () => {
-          this.loadUsers();
-          this.editingUser = null;
-          this.isSaving = false;
-        },
-        error: (err) => {
-          console.error('User update error:', err);
-          this.isSaving = false;
-        }
-      });
-    } else {
-      // Yeni kullanıcı kaydı için Angular HTTP'yi bypass ederek direkt kayıt yapıyoruz
-      this.direktKayit(userData)
-        .then(() => {
-          this.loadUsers();
-          this.editingUser = null;
-        })
-        .catch(error => {
-          console.error('Kullanıcı kaydı hatası:', error);
-          alert('Kullanıcı kaydı yapılamadı: ' + error.message);
-        })
-        .finally(() => {
-          this.isSaving = false;
+    // Şifre değiştirme seçildiyse veya yeni kullanıcı oluşturuluyorsa şifreyi ekle
+    if (!this.editingUser?.id || this.showPasswordField) {
+      userData.password = values.password || '';
+    }
+
+    console.log('Kaydedilecek kullanıcı verisi:', userData);
+    console.log('Şifre değiştiriliyor mu:', !this.editingUser?.id || this.showPasswordField);
+
+    try {
+      if (this.editingUser?.id) {
+        // Mevcut kullanıcıyı güncelle
+        this.authService.updateUser(this.editingUser.id, userData).subscribe({
+          next: (updatedUser) => {
+            const index = this.users.findIndex(u => u.id === updatedUser.id);
+            if (index !== -1) {
+              this.users[index] = updatedUser;
+            }
+            this.editingUser = null;
+            this.isSaving = false;
+            alert('Kullanıcı başarıyla güncellendi');
+          },
+          error: (error) => {
+            console.error('Kullanıcı güncellenirken hata oluştu:', error);
+            this.isSaving = false;
+            alert('Kullanıcı güncellenirken hata oluştu: ' + error);
+          }
         });
+      } else {
+        // Önce kullanıcı adı ve email kontrolü yap
+        this.checkUserExists(userData.username, userData.email)
+          .then(exists => {
+            if (exists) {
+              throw new Error('Bu kullanıcı adı veya e-posta adresi zaten kullanımda');
+            }
+
+            // Kullanıcı yoksa oluştur
+            return this.direktKayit(userData);
+          })
+          .then(newUser => {
+            this.users.push(newUser);
+            this.editingUser = null;
+            this.isSaving = false;
+            alert('Kullanıcı başarıyla oluşturuldu');
+          })
+          .catch(error => {
+            console.error('Kullanıcı oluşturulurken hata oluştu:', error);
+            this.isSaving = false;
+            // Daha kullanıcı dostu hata mesajı göster
+            alert('Kullanıcı oluşturulamadı: ' + error.message);
+          });
+      }
+    } catch (error) {
+      console.error('İşlem sırasında hata oluştu:', error);
+      this.isSaving = false;
+      alert('İşlem sırasında beklenmeyen bir hata oluştu');
     }
   }
 

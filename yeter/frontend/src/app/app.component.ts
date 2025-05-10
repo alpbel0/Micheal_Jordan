@@ -20,6 +20,7 @@ export class AppComponent implements OnInit {
   cartItemCount = 0;
   currentUser: User | null = null;
   searchQuery: string = '';
+  isDropdownOpen: boolean = false;
 
   constructor(
     private cartService: CartService,
@@ -45,6 +46,10 @@ export class AppComponent implements OnInit {
         // No need to navigate here, logout likely handles redirection or the guard will
       }
     }
+  }
+
+  toggleDropdown(): void {
+    this.isDropdownOpen = !this.isDropdownOpen;
   }
 
   // Add methods to check user roles

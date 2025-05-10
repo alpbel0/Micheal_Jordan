@@ -4,6 +4,20 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { User } from '../models/user.model';
 
+// Adres modeli
+export interface Address {
+  id?: number;
+  userId?: number;
+  title: string;
+  fullName: string;
+  phone: string;
+  city: string;
+  district: string;
+  zipCode: string;
+  addressLine: string;
+  isDefault: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -39,6 +53,42 @@ export class UserProfileService {
     formData.append('image', image);
 
     return this.http.post<any>(`${this.apiUrl}/${userId}/upload-image`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Adres işlemleri
+  // Kullanıcı adreslerini getir
+  getUserAddresses(userId: number): Observable<Address[]> {
+    return this.http.get<Address[]>(`${this.apiUrl}/${userId}/addresses`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Yeni adres ekle
+  addAddress(userId: number, address: Address): Observable<Address> {
+    return this.http.post<Address>(`${this.apiUrl}/${userId}/addresses`, address).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Adres güncelle
+  updateAddress(userId: number, addressId: number, address: Address): Observable<Address> {
+    return this.http.put<Address>(`${this.apiUrl}/${userId}/addresses/${addressId}`, address).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Adres sil
+  deleteAddress(userId: number, addressId: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${userId}/addresses/${addressId}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // Varsayılan adres yap
+  setDefaultAddress(userId: number, addressId: number): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${userId}/addresses/${addressId}/default`, {}).pipe(
       catchError(this.handleError)
     );
   }

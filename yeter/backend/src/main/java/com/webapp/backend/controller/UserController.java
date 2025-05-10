@@ -213,6 +213,27 @@ public class UserController {
         }
         existingUser.setUsername(userDetails.getUsername());
         
+        // Şifre değişikliği varsa güncelle ve hashle
+        if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+            // Şifreyi PasswordEncoder ile hashle
+            existingUser = userService.changePassword(existingUser, userDetails.getPassword());
+        }
+        
+        // Rol güncelleme (sadece admin tarafından yapılabilir)
+        if (userDetails.getRole() != null) {
+            // Role enum'a çevir
+            try {
+                existingUser.setRole(userDetails.getRole());
+            } catch (Exception e) {
+                System.err.println("Role conversion error: " + e.getMessage());
+            }
+        }
+        
+        // Banned durumu güncelleme
+        if (userDetails.getBanned() != null) {
+            existingUser.setBanned(userDetails.getBanned());
+        }
+        
         User updatedUser = userService.updateUser(existingUser);
         
         // Kullanıcıyı UserProfileDto'ya dönüştür
